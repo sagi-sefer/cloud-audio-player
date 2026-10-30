@@ -15,6 +15,8 @@
   * Album cover art (`cover.jpg`, `cover.png`, `folder.jpg`, `album.jpg`) is searched case-insensitively across Google Drive and Dropbox folders.
 * **Playlist & Queue Management**:
   * `Media3PlayerAdapter` preserves active playlist queues, enabling correct previous/next track navigation in both the Mini Player and Full-Screen Player.
+* **Continuous Album & Playlist Playback**:
+  * `Media3PlayerAdapter` listens to `Player.STATE_ENDED` events to automatically advance and start playing the next track in the album queue, stopping playback cleanly at the end of the final track without looping.
 * **Track Ordering**:
   * Both Google Drive and Dropbox storage adapters sort files and folders alphabetically by name (`01 - ...`, `02 - ...`) to maintain correct CD track order.
 
