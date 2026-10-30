@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.cloudaudioplayer.domain.model.MediaItem
 import com.example.cloudaudioplayer.presentation.components.FullScreenPlayer
 import com.example.cloudaudioplayer.presentation.components.MiniPlayer
 import com.example.cloudaudioplayer.presentation.main.MainViewModel
@@ -106,6 +107,7 @@ fun MainAppScreen(
                         isLoading = uiState.isLoading,
                         isSyncing = uiState.isSyncing,
                         onArtistClick = { artist -> viewModel.navigateToAlbums(artist) },
+                        onFlatAlbumsClick = { viewModel.loadFlatAlbums() },
                         onSyncClick = { viewModel.syncLibrary() },
                         onSettingsClick = { viewModel.toggleAuthModal(true) }
                     )
@@ -131,6 +133,29 @@ fun MainAppScreen(
                         currentTrackId = playbackState.currentTrack?.id,
                         onTrackClick = { track -> viewModel.playTrack(track) },
                         onBackClick = { viewModel.navigateBack() }
+                    )
+                }
+
+                is TreeLevel.FlatAlbums -> {
+                    AlbumGridScreen(
+                        artist = MediaItem.Folder(id = "flat", name = "LIBRARY", path = ""),
+                        albums = uiState.flatAlbums,
+                        isLoading = uiState.isLoading,
+                        onAlbumClick = { album -> viewModel.navigateToFlatAlbumTracks(album) },
+                        onAlbumPlayClick = { album -> viewModel.playFlatAlbum(album) },
+                        onBackClick = { viewModel.loadArtists() }
+                    )
+                }
+
+                is TreeLevel.FlatAlbumTracks -> {
+                    TrackListScreen(
+                        artist = MediaItem.Folder(id = "flat", name = "Library", path = ""),
+                        album = level.album,
+                        tracks = uiState.tracks,
+                        isLoading = uiState.isLoading,
+                        currentTrackId = playbackState.currentTrack?.id,
+                        onTrackClick = { track -> viewModel.playTrack(track) },
+                        onBackClick = { viewModel.loadFlatAlbums() }
                     )
                 }
             }

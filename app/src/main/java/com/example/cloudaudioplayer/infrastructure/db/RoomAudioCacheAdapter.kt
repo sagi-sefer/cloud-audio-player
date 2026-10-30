@@ -30,6 +30,10 @@ class RoomAudioCacheAdapter @Inject constructor(
         return dao.getAlbumsForArtist(artistFolderId).map { it.toDomain() }.filterIsInstance<MediaItem.Folder>()
     }
 
+    override suspend fun getAllCachedAlbums(): List<MediaItem.Folder> {
+        return dao.getAllAlbums().map { it.toDomain() }.filterIsInstance<MediaItem.Folder>()
+    }
+
     override suspend fun getCachedTracksForAlbum(albumFolderId: String): List<MediaItem.AudioTrack> {
         return dao.getTracksForAlbum(albumFolderId).map { it.toDomain() }.filterIsInstance<MediaItem.AudioTrack>()
     }

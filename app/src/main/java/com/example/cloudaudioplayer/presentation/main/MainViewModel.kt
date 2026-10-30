@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cloudaudioplayer.application.GetFlatAlbumsUseCase
 import com.example.cloudaudioplayer.application.GetFolderContentsUseCase
 import com.example.cloudaudioplayer.application.StreamAudioUseCase
 import com.example.cloudaudioplayer.application.SyncLibraryCacheUseCase
@@ -32,6 +33,8 @@ sealed class TreeLevel {
     object Artists : TreeLevel()
     data class Albums(val artist: MediaItem.Folder) : TreeLevel()
     data class Tracks(val artist: MediaItem.Folder, val album: MediaItem.Folder) : TreeLevel()
+    object FlatAlbums : TreeLevel()
+    data class FlatAlbumTracks(val album: MediaItem.Folder) : TreeLevel()
 }
 
 data class MainUiState(
@@ -41,6 +44,7 @@ data class MainUiState(
     val rootFolder: String = "Music",
     val artists: List<MediaItem.Folder> = emptyList(),
     val albums: List<MediaItem.Folder> = emptyList(),
+    val flatAlbums: List<MediaItem.Folder> = emptyList(),
     val tracks: List<MediaItem.AudioTrack> = emptyList(),
     val isLoading: Boolean = false,
     val isSyncing: Boolean = false,
@@ -56,6 +60,7 @@ data class MainUiState(
 class MainViewModel @Inject constructor(
     application: Application,
     private val getFolderContentsUseCase: GetFolderContentsUseCase,
+    private val getFlatAlbumsUseCase: GetFlatAlbumsUseCase,
     private val streamAudioUseCase: StreamAudioUseCase,
     private val syncLibraryCacheUseCase: SyncLibraryCacheUseCase,
     private val cloudStorageRepository: CloudStorageRepository,
@@ -329,10 +334,100 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun loadFlatAlbums() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(currentLevel = TreeLevel.FlatAlbums, isLoading = true, errorMessage = null) }
+            try {
+                val flatAlbums = getFlatAlbumsUseCase()
+                _uiState.update {
+                    it.copy(
+                        flatAlbums = flatAlbums,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.localizedMessage ?: "Failed to load flat albums"
+                    )
+                }
+            }
+        }
+    }
+
+    fun navigateToFlatAlbumTracks(album: MediaItem.Folder, forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    currentLevel = TreeLevel.FlatAlbumTracks(album),
+                    isLoading = true,
+                    errorMessage = null
+                )
+            }
+            try {
+                val state = _uiState.value
+                AuthTokenHolder.currentToken = state.authData
+                val items = getFolderContentsUseCase(
+                    folderId = album.id,
+                    storageType = state.storageType,
+                    authData = state.authData,
+                    rootFolder = state.rootFolder,
+                    forceRefresh = forceRefresh
+                )
+                val audioTracks = items.filterIsInstance<MediaItem.AudioTrack>().map { track ->
+                    if (track.album.isEmpty()) track.copy(album = album.name) else track
+                }
+                _uiState.update {
+                    it.copy(
+                        tracks = audioTracks,
+                        isLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.localizedMessage ?: "Failed to load tracks"
+                    )
+                }
+            }
+        }
+    }
+
+    fun playFlatAlbum(album: MediaItem.Folder) {
+        viewModelScope.launch {
+            try {
+                val state = _uiState.value
+                AuthTokenHolder.currentToken = state.authData
+                val items = getFolderContentsUseCase(
+                    folderId = album.id,
+                    storageType = state.storageType,
+                    authData = state.authData,
+                    rootFolder = state.rootFolder,
+                    forceRefresh = false
+                )
+                val audioTracks = items.filterIsInstance<MediaItem.AudioTrack>()
+                if (audioTracks.isNotEmpty()) {
+                    _uiState.update { it.copy(tracks = audioTracks) }
+                    streamAudioUseCase(
+                        track = audioTracks.first(),
+                        playlist = audioTracks,
+                        authData = state.authData
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = "Failed to play album: ${e.localizedMessage}") }
+            }
+        }
+    }
+
     fun navigateBack() {
         when (val level = _uiState.value.currentLevel) {
             is TreeLevel.Tracks -> navigateToAlbums(level.artist)
             is TreeLevel.Albums -> loadArtists()
+            is TreeLevel.FlatAlbumTracks -> loadFlatAlbums()
+            is TreeLevel.FlatAlbums -> loadArtists()
             is TreeLevel.Artists -> {}
         }
     }
@@ -378,7 +473,11 @@ class MainViewModel @Inject constructor(
                 AuthTokenHolder.currentToken = state.authData
                 syncLibraryCacheUseCase(state.storageType, state.authData, state.rootFolder)
                 _uiState.update { it.copy(isSyncing = false) }
-                loadArtists(forceRefresh = true)
+                if (state.currentLevel is TreeLevel.FlatAlbums) {
+                    loadFlatAlbums()
+                } else {
+                    loadArtists(forceRefresh = true)
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(

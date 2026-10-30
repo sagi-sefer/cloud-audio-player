@@ -19,6 +19,9 @@ interface AudioCacheDao {
     @Query("SELECT * FROM media_items WHERE parentFolderId = :artistFolderId AND isFolder = 1")
     suspend fun getAlbumsForArtist(artistFolderId: String): List<MediaItemEntity>
 
+    @Query("SELECT * FROM media_items WHERE isFolder = 1 AND parentFolderId != 'root' ORDER BY name ASC")
+    suspend fun getAllAlbums(): List<MediaItemEntity>
+
     @Query("SELECT * FROM media_items WHERE parentFolderId = :albumFolderId AND isFolder = 0")
     suspend fun getTracksForAlbum(albumFolderId: String): List<MediaItemEntity>
 

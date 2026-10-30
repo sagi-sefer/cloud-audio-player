@@ -7,6 +7,7 @@ interface MetadataRepository {
     suspend fun getCachedItems(parentFolderId: String): List<MediaItem>
     suspend fun getAllCachedArtists(): List<MediaItem.Folder>
     suspend fun getCachedAlbumsForArtist(artistFolderId: String): List<MediaItem.Folder>
+    suspend fun getAllCachedAlbums(): List<MediaItem.Folder>
     suspend fun getCachedTracksForAlbum(albumFolderId: String): List<MediaItem.AudioTrack>
     suspend fun clearCache()
 }

@@ -29,12 +29,13 @@ com.example.cloudaudioplayer/
 * **Interfaces (Repositories)**:
   * `CloudStorageRepository`: Cloud querying, stream URL resolution, album cover art discovery.
   * `AudioPlayerRepository`: Playback controls (`play`, `playPlaylist`, `pause`, `resume`, `seekTo`, `skipToNext`, `skipToPrevious`, `stop`).
-  * `MetadataRepository`: Local library caching and retrieval.
+  * `MetadataRepository`: Local library caching and retrieval (`getAllCachedArtists`, `getCachedAlbumsForArtist`, `getAllCachedAlbums`, `getCachedTracksForAlbum`).
 
 #### B. `application` (Use Cases Layer)
 * `GetFolderContentsUseCase`: Fetches folder hierarchies and tracks from cloud repositories with local Room cache fallback.
+* `GetFlatAlbumsUseCase`: Fetches all cached albums across artists for flat grid display.
 * `StreamAudioUseCase`: Resolves secure cloud stream URLs (injecting Bearer tokens for Google Drive or temporary links for Dropbox) and initiates player queue playback.
-* `SyncLibraryCacheUseCase`: Deep-syncs cloud folder trees and album covers into local Room database storage.
+* `SyncLibraryCacheUseCase`: Deep-syncs cloud folder trees (`Artist -> Album -> Tracks`) and album covers into local Room database storage.
 
 #### C. `infrastructure` (Adapters & External Drivers Layer)
 * **Cloud Storage Adapters**:
@@ -43,7 +44,7 @@ com.example.cloudaudioplayer/
 * **Audio Player Adapter**:
   * `AudioPlayerService` & `Media3PlayerAdapter`: Wraps AndroidX Media3 `MediaSessionService` + `ExoPlayer` with custom OkHttp HTTP data source factories for authenticated cloud streaming.
 * **Database (Room)**:
-  * `MediaItemEntity`, `AudioCacheDao`, `AppDatabase`, `RoomAudioCacheAdapter`.
+  * `MediaItemEntity`, `AudioCacheDao` (with `getAllAlbums` query for flat album catalog), `AppDatabase`, `RoomAudioCacheAdapter`.
 * **Dependency Injection (Hilt)**:
   * `DatabaseModule`, `StorageModule`, `PlayerModule`, `NetworkModule`.
 
@@ -53,6 +54,8 @@ com.example.cloudaudioplayer/
   * `BidiText`: Text wrapper enforcing `TextDirection.ContentOrLtr` for clean English and Hebrew rendering.
   * `DrivingControls`, `MiniPlayer`, `FullScreenPlayer`: Car-friendly playback UI.
 * **Screens & Navigation**:
-  * 3-screen flow: Artist List (Level 1) -> Album Grid/List (Level 2) -> Track List (Level 3).
+  * Dual View Mode Navigation from Welcome Screen:
+    1. **Navigate by Artist ➔ Albums** (Hierarchical browse via `ArtistListScreen` -> `AlbumGridScreen` -> `TrackListScreen`).
+    2. **Flat Albums List** (Global album grid via `AlbumGridScreen` -> `TrackListScreen`).
   * `CloudAuthDialog` & `CloudFolderPickerDialog`: Cloud account authentication and folder browser picker.
-  * `MainViewModel`: Coordinates state, tree navigation, authentication, and playback.
+  * `MainViewModel`: Coordinates state, tree navigation, view modes, authentication, and playback.

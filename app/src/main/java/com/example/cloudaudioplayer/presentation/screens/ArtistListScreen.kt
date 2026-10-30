@@ -46,6 +46,7 @@ fun ArtistListScreen(
     isLoading: Boolean,
     isSyncing: Boolean,
     onArtistClick: (MediaItem.Folder) -> Unit,
+    onFlatAlbumsClick: () -> Unit,
     onSyncClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -71,12 +72,22 @@ fun ArtistListScreen(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
-                BidiText(
-                    text = "ARTISTS",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BidiText(
+                        text = "ARTISTS",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    BidiText(
+                        text = "ALBUMS",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onFlatAlbumsClick() }
+                    )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {

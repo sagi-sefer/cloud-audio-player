@@ -13,6 +13,9 @@
   * Solved via a custom `OkHttpClient` interceptor (`NetworkModule` & `AuthTokenHolder`) that injects the active bearer token into all `googleapis.com` image requests made by Coil.
 * **Case-Insensitive Cover Art Discovery**:
   * Album cover art (`cover.jpg`, `cover.png`, `folder.jpg`, `album.jpg`) is searched case-insensitively across Google Drive and Dropbox folders.
+* **Local Catalog & Dual View Modes**:
+  * Cloud storage maintains a two-level hierarchy (`Artist Folder -> Album Folder -> Audio Files`). At sync time (`SyncLibraryCacheUseCase`), the app parses folder/file names to build a robust local Room catalog.
+  * The app provides two display options: (1) Navigate by Artist ➔ Albums, and (2) Flat Albums List (album grid across all artists), allowing instant offline navigation with cover art.
 * **Playlist & Queue Management**:
   * `Media3PlayerAdapter` preserves active playlist queues, enabling correct previous/next track navigation in both the Mini Player and Full-Screen Player.
 * **Continuous Album & Playlist Playback**:
