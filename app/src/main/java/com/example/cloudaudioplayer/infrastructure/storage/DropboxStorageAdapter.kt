@@ -28,21 +28,27 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
     ): List<MediaItem.Folder> = withContext(Dispatchers.IO) {
         try {
             val client = getDropboxClient(authData)
-            val path = if (rootFolder.isNotBlank() && rootFolder != "Cloud Root") {
+            val path = if (rootFolder.isNotBlank() && rootFolder != "Cloud Root" && rootFolder != "root") {
                 if (rootFolder.startsWith("/")) rootFolder else "/$rootFolder"
             } else ""
+            
+            android.util.Log.d("DropboxStorageAdapter", "Listing folder path: '$path' (rootFolder parameter: '$rootFolder')")
             val result = client.files().listFolder(path)
-            result.entries.filterIsInstance<FolderMetadata>()
+            val folders = result.entries.filterIsInstance<FolderMetadata>()
                 .sortedBy { it.name }
                 .map { folder ->
+                    val folderPath = folder.pathLower ?: "/${folder.name}"
                     MediaItem.Folder(
-                        id = folder.id,
+                        id = folderPath,
                         name = folder.name,
-                        path = folder.pathLower ?: "/${folder.name}",
+                        path = folderPath,
                         parentId = if (path.isEmpty()) "root" else path
                     )
                 }
-        } catch (_: Exception) {
+            android.util.Log.d("DropboxStorageAdapter", "Found ${folders.size} folders at '$path'")
+            folders
+        } catch (e: Exception) {
+            android.util.Log.e("DropboxStorageAdapter", "Error listing folder path '$rootFolder': ${e.javaClass.simpleName} - ${e.message}", e)
             emptyList()
         }
     }
@@ -54,18 +60,21 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
     ): List<MediaItem> = withContext(Dispatchers.IO) {
         try {
             val client = getDropboxClient(authData)
-            val path = if (folderId == "root") "" else folderId
+            val path = if (folderId == "root" || folderId.isEmpty()) "" else {
+                if (folderId.startsWith("/")) folderId else "/$folderId"
+            }
             val result = client.files().listFolder(path)
 
             val items = mutableListOf<MediaItem>()
             for (entry in result.entries.sortedBy { it.name }) {
                 when (entry) {
                     is FolderMetadata -> {
+                        val folderPath = entry.pathLower ?: "/${entry.name}"
                         items.add(
                             MediaItem.Folder(
-                                id = entry.pathLower ?: entry.id,
+                                id = folderPath,
                                 name = entry.name,
-                                path = entry.pathLower ?: "/${entry.name}",
+                                path = folderPath,
                                 parentId = folderId
                             )
                         )
@@ -73,13 +82,14 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
                     is FileMetadata -> {
                         val format = AudioFormat.fromExtension(entry.name)
                         if (format != AudioFormat.UNKNOWN) {
+                            val filePath = entry.pathLower ?: "/${entry.name}"
                             items.add(
                                 MediaItem.AudioTrack(
-                                    id = entry.pathLower ?: entry.id,
+                                    id = filePath,
                                     title = entry.name.substringBeforeLast('.'),
                                     artist = "Artist",
                                     album = "Album",
-                                    path = entry.pathLower ?: "/${entry.name}",
+                                    path = filePath,
                                     durationMs = 0L,
                                     format = format,
                                     coverArtUrl = null,
@@ -92,7 +102,8 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
                 }
             }
             items
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("DropboxStorageAdapter", "Error getting folder contents for path '$folderId': ${e.message}", e)
             emptyList()
         }
     }

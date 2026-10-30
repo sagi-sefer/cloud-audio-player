@@ -5,7 +5,9 @@
   * Users can paste an OAuth Bearer Token generated via the [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground/) with the `https://www.googleapis.com/auth/drive.readonly` scope.
   * Alternatively, users can browse cloud folders directly using the built-in **Cloud Folder Picker**.
 * **Dropbox**:
-  * Users enter their Dropbox Access Token in the settings dialog.
+  * Developers can configure their Dropbox App Key once in `DropboxConfig.DEFAULT_APP_KEY` (`DropboxConfig.kt`). This allows end users to sign in directly from inside the app using the **"Sign in with Dropbox"** button out-of-the-box without needing to create or enter an app client ID.
+  * Launches an in-app OAuth authorization flow (supporting Google/Gmail account login) and automatically captures the access token via a deep link (`cloudaudioplayer://oauth`).
+  * Alternatively, users can paste a Dropbox Access Token manually in the settings dialog.
 
 ## 2. Key Technical Decisions & Solved Issues
 * **Coil Authentication for Drive Images**:

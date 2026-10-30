@@ -58,9 +58,37 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        handleIntent(intent)
+
         setContent {
             CloudAudioPlayerTheme {
                 MainAppScreen(googleSignInLauncher)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val data = intent?.data
+        if (data != null && data.scheme == "cloudaudioplayer" && data.host == "oauth") {
+            val fragment = data.fragment
+            if (fragment != null) {
+                for (param in fragment.split("&")) {
+                    val parts = param.split("=")
+                    if (parts.size == 2 && parts[0] == "access_token") {
+                        try {
+                            val token = java.net.URLDecoder.decode(parts[1], "UTF-8")
+                            androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+                                .handleDropboxToken(token)
+                        } catch (_: Exception) {}
+                        break
+                    }
+                }
             }
         }
     }
@@ -161,6 +189,7 @@ fun MainAppScreen(
             }
 
             if (uiState.isAuthModalOpen) {
+                val activity = context as? android.app.Activity
                 CloudAuthDialog(
                     currentStorageType = uiState.storageType,
                     currentAuthData = uiState.authData,
@@ -170,6 +199,11 @@ fun MainAppScreen(
                     },
                     onGoogleSignInClick = {
                         viewModel.startGoogleSignIn(googleSignInLauncher)
+                    },
+                    onDropboxSignInClick = { appKey ->
+                        if (activity != null) {
+                            viewModel.startDropboxSignIn(activity, appKey)
+                        }
                     },
                     onBrowseFoldersClick = {
                         viewModel.openFolderPicker()
@@ -182,6 +216,7 @@ fun MainAppScreen(
                 CloudFolderPickerDialog(
                     subFolders = uiState.pickerSubFolders,
                     folderStack = uiState.pickerFolderStack,
+                    storageType = uiState.storageType,
                     onFolderClick = { folder -> viewModel.pushPickerFolder(folder) },
                     onBackClick = { viewModel.popPickerFolder() },
                     onFolderSelected = { folderName -> viewModel.selectPickerRootFolder(folderName) },

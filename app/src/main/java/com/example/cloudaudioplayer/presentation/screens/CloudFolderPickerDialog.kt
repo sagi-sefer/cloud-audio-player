@@ -35,12 +35,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.cloudaudioplayer.domain.model.MediaItem
+import com.example.cloudaudioplayer.domain.model.StorageType
 import com.example.cloudaudioplayer.presentation.components.BidiText
 
 @Composable
 fun CloudFolderPickerDialog(
     subFolders: List<MediaItem.Folder>,
     folderStack: List<Pair<String, String>>,
+    storageType: StorageType,
     onFolderClick: (MediaItem.Folder) -> Unit,
     onBackClick: () -> Unit,
     onFolderSelected: (folderName: String) -> Unit,
@@ -136,7 +138,14 @@ fun CloudFolderPickerDialog(
                         Text("CANCEL", color = Color.White)
                     }
                     Button(
-                        onClick = { onFolderSelected(currentFolderName) },
+                        onClick = {
+                            val selected = if (storageType == StorageType.DROPBOX) {
+                                folderStack.lastOrNull()?.first ?: ""
+                            } else {
+                                currentFolderName
+                            }
+                            onFolderSelected(selected)
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("SELECT FOLDER", fontWeight = FontWeight.Bold)

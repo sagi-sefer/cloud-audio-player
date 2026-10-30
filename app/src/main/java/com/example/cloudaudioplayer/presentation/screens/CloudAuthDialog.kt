@@ -38,12 +38,21 @@ fun CloudAuthDialog(
     currentRootFolder: String,
     onSave: (StorageType, String, String) -> Unit,
     onGoogleSignInClick: () -> Unit,
+    onDropboxSignInClick: (String) -> Unit,
     onBrowseFoldersClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf(currentStorageType) }
     var tokenInput by remember { mutableStateOf(currentAuthData) }
     var rootFolderInput by remember { mutableStateOf(currentRootFolder) }
+    var appKeyInput by remember { mutableStateOf("") }
+
+    androidx.compose.runtime.LaunchedEffect(currentRootFolder) {
+        rootFolderInput = currentRootFolder
+    }
+    androidx.compose.runtime.LaunchedEffect(currentAuthData) {
+        tokenInput = currentAuthData
+    }
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -158,6 +167,45 @@ fun CloudAuthDialog(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "— OR PASTE TOKEN MANUALLY —",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                } else if (selectedType == StorageType.DROPBOX) {
+                    BidiText(
+                        text = "Dropbox App Key (Client ID):",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = appKeyInput,
+                        onValueChange = { appKeyInput = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Enter Dropbox App Key") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = { onDropboxSignInClick(appKeyInput) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0061FF))
+                    ) {
+                        Text(
+                            text = "Sign in with Dropbox",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = "— OR PASTE TOKEN MANUALLY —",

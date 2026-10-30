@@ -15,6 +15,7 @@ import com.example.cloudaudioplayer.domain.model.StorageType
 import com.example.cloudaudioplayer.domain.repository.AudioPlayerRepository
 import com.example.cloudaudioplayer.domain.repository.CloudStorageRepository
 import com.example.cloudaudioplayer.infrastructure.storage.AuthTokenHolder
+import com.example.cloudaudioplayer.infrastructure.storage.DropboxConfig
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -41,6 +42,7 @@ data class MainUiState(
     val currentLevel: TreeLevel = TreeLevel.Artists,
     val storageType: StorageType = StorageType.GOOGLE_DRIVE,
     val authData: String = "",
+    val dropboxAppKey: String = "",
     val rootFolder: String = "Music",
     val artists: List<MediaItem.Folder> = emptyList(),
     val albums: List<MediaItem.Folder> = emptyList(),
@@ -67,13 +69,45 @@ class MainViewModel @Inject constructor(
     private val audioPlayerRepository: AudioPlayerRepository
 ) : AndroidViewModel(application) {
 
+    private val prefs = application.getSharedPreferences("cloud_audio_prefs", android.content.Context.MODE_PRIVATE)
+
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
     val playbackState: StateFlow<PlaybackState> = audioPlayerRepository.playbackState
 
     init {
+        loadSavedConfig()
         loadArtists()
+    }
+
+    private fun loadSavedConfig() {
+        val savedTypeStr = prefs.getString("storage_type", StorageType.GOOGLE_DRIVE.name) ?: StorageType.GOOGLE_DRIVE.name
+        val savedType = try { StorageType.valueOf(savedTypeStr) } catch (_: Exception) { StorageType.GOOGLE_DRIVE }
+        val savedToken = prefs.getString("auth_data", "") ?: ""
+        val savedRoot = prefs.getString("root_folder", "Music") ?: "Music"
+        val savedAppKey = prefs.getString("dropbox_app_key", "") ?: ""
+
+        AuthTokenHolder.currentToken = savedToken
+        _uiState.update {
+            it.copy(
+                storageType = savedType,
+                authData = savedToken,
+                rootFolder = savedRoot,
+                dropboxAppKey = savedAppKey
+            )
+        }
+    }
+
+    private fun saveConfig() {
+        val state = _uiState.value
+        prefs.edit().apply {
+            putString("storage_type", state.storageType.name)
+            putString("auth_data", state.authData)
+            putString("root_folder", state.rootFolder)
+            putString("dropbox_app_key", state.dropboxAppKey)
+            apply()
+        }
     }
 
     fun setStorageConfig(type: StorageType, token: String, rootFolder: String) {
@@ -86,6 +120,38 @@ class MainViewModel @Inject constructor(
                 isAuthModalOpen = false
             )
         }
+        saveConfig()
+        loadArtists(forceRefresh = true)
+    }
+
+    fun startDropboxSignIn(activity: android.app.Activity, appKey: String) {
+        val keyToUse = if (appKey.isNotBlank()) appKey.trim() else DropboxConfig.DEFAULT_APP_KEY
+        if (keyToUse.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Please enter your Dropbox App Key or configure DropboxConfig.DEFAULT_APP_KEY") }
+            return
+        }
+        _uiState.update { it.copy(dropboxAppKey = keyToUse) }
+        saveConfig()
+        val authUrl = "https://www.dropbox.com/oauth2/authorize?client_id=$keyToUse&response_type=token&redirect_uri=cloudaudioplayer://oauth&scope=files.metadata.read%20files.content.read"
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(authUrl))
+            activity.startActivity(intent)
+        } catch (e: Exception) {
+            _uiState.update { it.copy(errorMessage = "Failed to launch Dropbox sign-in: ${e.message}") }
+        }
+    }
+
+    fun handleDropboxToken(token: String) {
+        AuthTokenHolder.currentToken = token
+        _uiState.update {
+            it.copy(
+                storageType = StorageType.DROPBOX,
+                authData = token,
+                isAuthModalOpen = false,
+                errorMessage = "Dropbox Sign-In successful!"
+            )
+        }
+        saveConfig()
         loadArtists(forceRefresh = true)
     }
 
@@ -147,13 +213,19 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun selectPickerRootFolder(folderName: String) {
+    fun selectPickerRootFolder(folderPath: String) {
+        val resolvedRoot = if (folderPath == "Cloud Root" || folderPath == "root" || folderPath.isEmpty()) {
+            ""
+        } else {
+            folderPath
+        }
         _uiState.update {
             it.copy(
-                rootFolder = folderName,
+                rootFolder = resolvedRoot,
                 isFolderPickerOpen = false
             )
         }
+        saveConfig()
         loadArtists(forceRefresh = true)
     }
 
@@ -184,6 +256,7 @@ class MainViewModel @Inject constructor(
                         isAuthModalOpen = false
                     )
                 }
+                saveConfig()
                 loadArtists(forceRefresh = true)
             } catch (e: Exception) {
                 _uiState.update {
