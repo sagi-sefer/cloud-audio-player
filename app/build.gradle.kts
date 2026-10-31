@@ -28,6 +28,8 @@ android {
         }
         val dropboxAppKey = localProperties.getProperty("DROPBOX_APP_KEY", "")
         buildConfigField("String", "DROPBOX_APP_KEY", "\"$dropboxAppKey\"")
+        val googleClientId = localProperties.getProperty("GOOGLE_CLIENT_ID", "")
+        buildConfigField("String", "GOOGLE_CLIENT_ID", "\"$googleClientId\"")
     }
 
     buildTypes {

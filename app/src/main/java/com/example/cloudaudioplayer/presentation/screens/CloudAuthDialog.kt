@@ -34,9 +34,11 @@ import com.example.cloudaudioplayer.presentation.components.BidiText
 @Composable
 fun CloudAuthDialog(
     currentStorageType: StorageType,
-    currentAuthData: String,
-    currentRootFolder: String,
-    onSave: (StorageType, String, String) -> Unit,
+    currentGoogleAuth: String,
+    currentGoogleRoot: String,
+    currentDropboxAuth: String,
+    currentDropboxRoot: String,
+    onSave: (StorageType, String, String, String, String) -> Unit,
     onGoogleSignInClick: () -> Unit,
     onDropboxSignInClick: () -> Unit,
     onSignOutClick: () -> Unit,
@@ -44,14 +46,17 @@ fun CloudAuthDialog(
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf(currentStorageType) }
-    var tokenInput by remember { mutableStateOf(currentAuthData) }
-    var rootFolderInput by remember { mutableStateOf(currentRootFolder) }
+    var googleTokenInput by remember { mutableStateOf(currentGoogleAuth) }
+    var googleRootInput by remember { mutableStateOf(currentGoogleRoot) }
+    var dropboxRootInput by remember { mutableStateOf(currentDropboxRoot) }
+    var dropboxAuthCurrent by remember { mutableStateOf(currentDropboxAuth) }
 
-    androidx.compose.runtime.LaunchedEffect(currentRootFolder) {
-        rootFolderInput = currentRootFolder
-    }
-    androidx.compose.runtime.LaunchedEffect(currentAuthData) {
-        tokenInput = currentAuthData
+    androidx.compose.runtime.LaunchedEffect(currentGoogleAuth, currentGoogleRoot, currentDropboxAuth, currentDropboxRoot, currentStorageType) {
+        selectedType = currentStorageType
+        googleTokenInput = currentGoogleAuth
+        googleRootInput = currentGoogleRoot
+        dropboxRootInput = currentDropboxRoot
+        dropboxAuthCurrent = currentDropboxAuth
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -79,7 +84,7 @@ fun CloudAuthDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Provider Switcher Buttons
+                // Provider Switcher Tabs
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -118,7 +123,7 @@ fun CloudAuthDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 BidiText(
-                    text = "Selected Music Root Folder:",
+                    text = if (selectedType == StorageType.GOOGLE_DRIVE) "Google Drive Music Root Folder:" else "Dropbox Music Root Folder:",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White
                 )
@@ -131,8 +136,14 @@ fun CloudAuthDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
-                        value = rootFolderInput,
-                        onValueChange = { rootFolderInput = it },
+                        value = if (selectedType == StorageType.GOOGLE_DRIVE) googleRootInput else dropboxRootInput,
+                        onValueChange = { newVal ->
+                            if (selectedType == StorageType.GOOGLE_DRIVE) {
+                                googleRootInput = newVal
+                            } else {
+                                dropboxRootInput = newVal
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         placeholder = { Text("e.g. Music") },
                         singleLine = true,
@@ -155,7 +166,7 @@ fun CloudAuthDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (selectedType == StorageType.GOOGLE_DRIVE) {
-                    val isGoogleLoggedIn = currentStorageType == StorageType.GOOGLE_DRIVE && currentAuthData.isNotBlank()
+                    val isGoogleLoggedIn = googleTokenInput.isNotBlank()
                     Button(
                         onClick = if (isGoogleLoggedIn) onSignOutClick else onGoogleSignInClick,
                         modifier = Modifier.fillMaxWidth(),
@@ -170,17 +181,17 @@ fun CloudAuthDialog(
                         )
                     }
 
-                    if (!isGoogleLoggedIn) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                    if (isGoogleLoggedIn) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "— OR PASTE TOKEN MANUALLY —",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            text = "Connected via Google Account",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Medium
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
                     }
                 } else if (selectedType == StorageType.DROPBOX) {
-                    val isDropboxLoggedIn = currentStorageType == StorageType.DROPBOX && currentAuthData.isNotBlank()
+                    val isDropboxLoggedIn = dropboxAuthCurrent.isNotBlank()
                     Button(
                         onClick = if (isDropboxLoggedIn) onSignOutClick else onDropboxSignInClick,
                         modifier = Modifier.fillMaxWidth(),
@@ -195,41 +206,16 @@ fun CloudAuthDialog(
                         )
                     }
 
-                    if (!isDropboxLoggedIn) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                    if (isDropboxLoggedIn) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "— OR PASTE TOKEN MANUALLY —",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
+                            text = "Connected via Dropbox Account",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Medium
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
-
-                BidiText(
-                    text = if (selectedType == StorageType.GOOGLE_DRIVE)
-                        "Google Drive OAuth Bearer Token:"
-                    else "Dropbox Access Token:",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                OutlinedTextField(
-                    value = tokenInput,
-                    onValueChange = { tokenInput = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Paste auth token here...") },
-                    singleLine = false,
-                    maxLines = 2,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.Gray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    )
-                )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -245,7 +231,9 @@ fun CloudAuthDialog(
                     }
 
                     Button(
-                        onClick = { onSave(selectedType, tokenInput, rootFolderInput) },
+                        onClick = {
+                            onSave(selectedType, googleTokenInput, googleRootInput, dropboxAuthCurrent, dropboxRootInput)
+                        },
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("SAVE", fontWeight = FontWeight.Bold)

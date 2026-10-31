@@ -192,10 +192,12 @@ fun MainAppScreen(
                 val activity = context as? android.app.Activity
                 CloudAuthDialog(
                     currentStorageType = uiState.storageType,
-                    currentAuthData = uiState.authData,
-                    currentRootFolder = uiState.rootFolder,
-                    onSave = { type, token, rootFolder ->
-                        viewModel.setStorageConfig(type, token, rootFolder)
+                    currentGoogleAuth = uiState.googleAuthData,
+                    currentGoogleRoot = uiState.googleRootFolder,
+                    currentDropboxAuth = uiState.dropboxAuthData,
+                    currentDropboxRoot = uiState.dropboxRootFolder,
+                    onSave = { type, gToken, gRoot, dToken, dRoot ->
+                        viewModel.setStorageConfigs(type, gToken, gRoot, dToken, dRoot)
                     },
                     onGoogleSignInClick = {
                         viewModel.startGoogleSignIn(googleSignInLauncher)
@@ -206,7 +208,7 @@ fun MainAppScreen(
                         }
                     },
                     onSignOutClick = {
-                        viewModel.signOut()
+                        viewModel.signOutActive()
                     },
                     onBrowseFoldersClick = {
                         viewModel.openFolderPicker()

@@ -13,9 +13,12 @@ class SyncLibraryCacheUseCase @Inject constructor(
     suspend operator fun invoke(
         storageType: StorageType,
         authData: String,
-        rootFolder: String = ""
+        rootFolder: String = "",
+        clearCacheFirst: Boolean = true
     ) {
-        metadataRepository.clearCache()
+        if (clearCacheFirst) {
+            metadataRepository.clearCache()
+        }
 
         val rootArtists = cloudStorageRepository.getRootFolders(storageType, authData, rootFolder)
         metadataRepository.cacheFolderContents("root", rootArtists)

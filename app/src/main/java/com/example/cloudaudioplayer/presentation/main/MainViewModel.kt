@@ -42,9 +42,11 @@ sealed class TreeLevel {
 data class MainUiState(
     val currentLevel: TreeLevel = TreeLevel.Artists,
     val storageType: StorageType = StorageType.GOOGLE_DRIVE,
-    val authData: String = "",
+    val googleAuthData: String = "",
+    val googleRootFolder: String = "Music",
+    val dropboxAuthData: String = "",
+    val dropboxRootFolder: String = "Music",
     val dropboxAppKey: String = "",
-    val rootFolder: String = "Music",
     val artists: List<MediaItem.Folder> = emptyList(),
     val albums: List<MediaItem.Folder> = emptyList(),
     val flatAlbums: List<MediaItem.Folder> = emptyList(),
@@ -57,7 +59,13 @@ data class MainUiState(
     val isFullScreenPlayerOpen: Boolean = false,
     val pickerSubFolders: List<MediaItem.Folder> = emptyList(),
     val pickerFolderStack: List<Pair<String, String>> = listOf(Pair("root", "Cloud Root"))
-)
+) {
+    val authData: String
+        get() = if (storageType == StorageType.GOOGLE_DRIVE) googleAuthData else dropboxAuthData
+
+    val rootFolder: String
+        get() = if (storageType == StorageType.GOOGLE_DRIVE) googleRootFolder else dropboxRootFolder
+}
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -86,16 +94,27 @@ class MainViewModel @Inject constructor(
     private fun loadSavedConfig() {
         val savedTypeStr = prefs.getString("storage_type", StorageType.GOOGLE_DRIVE.name) ?: StorageType.GOOGLE_DRIVE.name
         val savedType = try { StorageType.valueOf(savedTypeStr) } catch (_: Exception) { StorageType.GOOGLE_DRIVE }
-        val savedToken = prefs.getString("auth_data", "") ?: ""
-        val savedRoot = prefs.getString("root_folder", "Music") ?: "Music"
+
+        val oldToken = prefs.getString("auth_data", "") ?: ""
+        val oldRoot = prefs.getString("root_folder", "Music") ?: "Music"
+
+        val googleToken = prefs.getString("google_auth_data", if (savedType == StorageType.GOOGLE_DRIVE) oldToken else "") ?: ""
+        val googleRoot = prefs.getString("google_root_folder", if (savedType == StorageType.GOOGLE_DRIVE) oldRoot else "Music") ?: "Music"
+        val dropboxToken = prefs.getString("dropbox_auth_data", if (savedType == StorageType.DROPBOX) oldToken else "") ?: ""
+        val dropboxRoot = prefs.getString("dropbox_root_folder", if (savedType == StorageType.DROPBOX) oldRoot else "Music") ?: "Music"
+
         val savedAppKey = prefs.getString("dropbox_app_key", "") ?: ""
 
-        AuthTokenHolder.currentToken = savedToken
+        val activeToken = if (savedType == StorageType.GOOGLE_DRIVE) googleToken else dropboxToken
+        AuthTokenHolder.currentToken = activeToken
+
         _uiState.update {
             it.copy(
                 storageType = savedType,
-                authData = savedToken,
-                rootFolder = savedRoot,
+                googleAuthData = googleToken,
+                googleRootFolder = googleRoot,
+                dropboxAuthData = dropboxToken,
+                dropboxRootFolder = dropboxRoot,
                 dropboxAppKey = savedAppKey
             )
         }
@@ -105,23 +124,53 @@ class MainViewModel @Inject constructor(
         val state = _uiState.value
         prefs.edit().apply {
             putString("storage_type", state.storageType.name)
-            putString("auth_data", state.authData)
-            putString("root_folder", state.rootFolder)
+            putString("google_auth_data", state.googleAuthData)
+            putString("google_root_folder", state.googleRootFolder)
+            putString("dropbox_auth_data", state.dropboxAuthData)
+            putString("dropbox_root_folder", state.dropboxRootFolder)
             putString("dropbox_app_key", state.dropboxAppKey)
             apply()
         }
     }
 
-    fun setStorageConfig(type: StorageType, token: String, rootFolder: String) {
-        AuthTokenHolder.currentToken = token
+    fun setStorageConfigs(
+        type: StorageType,
+        googleToken: String,
+        googleRoot: String,
+        dropboxToken: String,
+        dropboxRoot: String
+    ) {
         _uiState.update {
             it.copy(
                 storageType = type,
-                authData = token,
-                rootFolder = rootFolder,
+                googleAuthData = googleToken,
+                googleRootFolder = googleRoot,
+                dropboxAuthData = dropboxToken,
+                dropboxRootFolder = dropboxRoot,
                 isAuthModalOpen = false
             )
         }
+        AuthTokenHolder.currentToken = if (type == StorageType.GOOGLE_DRIVE) googleToken else dropboxToken
+        saveConfig()
+        loadArtists(forceRefresh = true)
+    }
+
+    fun setStorageConfig(type: StorageType, token: String, rootFolder: String) {
+        _uiState.update { state ->
+            val gAuth = if (type == StorageType.GOOGLE_DRIVE) token else state.googleAuthData
+            val gRoot = if (type == StorageType.GOOGLE_DRIVE) rootFolder else state.googleRootFolder
+            val dAuth = if (type == StorageType.DROPBOX) token else state.dropboxAuthData
+            val dRoot = if (type == StorageType.DROPBOX) rootFolder else state.dropboxRootFolder
+            state.copy(
+                storageType = type,
+                googleAuthData = gAuth,
+                googleRootFolder = gRoot,
+                dropboxAuthData = dAuth,
+                dropboxRootFolder = dRoot,
+                isAuthModalOpen = false
+            )
+        }
+        AuthTokenHolder.currentToken = token
         saveConfig()
         loadArtists(forceRefresh = true)
     }
@@ -143,19 +192,16 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun signOut() {
-        AuthTokenHolder.currentToken = ""
-        _uiState.update {
-            it.copy(
-                authData = "",
-                artists = emptyList(),
-                albums = emptyList(),
-                flatAlbums = emptyList(),
-                tracks = emptyList(),
-                isAuthModalOpen = false,
-                errorMessage = "Signed out successfully"
-            )
+    fun signOutActive() {
+        val type = _uiState.value.storageType
+        _uiState.update { state ->
+            if (type == StorageType.GOOGLE_DRIVE) {
+                state.copy(googleAuthData = "", artists = emptyList(), albums = emptyList(), flatAlbums = emptyList(), tracks = emptyList(), isAuthModalOpen = false, errorMessage = "Signed out of Google Drive")
+            } else {
+                state.copy(dropboxAuthData = "", artists = emptyList(), albums = emptyList(), flatAlbums = emptyList(), tracks = emptyList(), isAuthModalOpen = false, errorMessage = "Signed out of Dropbox")
+            }
         }
+        AuthTokenHolder.currentToken = _uiState.value.authData
         saveConfig()
         viewModelScope.launch {
             metadataRepository.clearCache()
@@ -168,7 +214,7 @@ class MainViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 storageType = StorageType.DROPBOX,
-                authData = token,
+                dropboxAuthData = token,
                 isAuthModalOpen = false,
                 errorMessage = "Dropbox Sign-In successful!"
             )
@@ -241,11 +287,12 @@ class MainViewModel @Inject constructor(
         } else {
             folderPath
         }
-        _uiState.update {
-            it.copy(
-                rootFolder = resolvedRoot,
-                isFolderPickerOpen = false
-            )
+        _uiState.update { state ->
+            if (state.storageType == StorageType.GOOGLE_DRIVE) {
+                state.copy(googleRootFolder = resolvedRoot, isFolderPickerOpen = false)
+            } else {
+                state.copy(dropboxRootFolder = resolvedRoot, isFolderPickerOpen = false)
+            }
         }
         saveConfig()
         loadArtists(forceRefresh = true)
@@ -274,8 +321,9 @@ class MainViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         storageType = StorageType.GOOGLE_DRIVE,
-                        authData = token,
-                        isAuthModalOpen = false
+                        googleAuthData = token,
+                        isAuthModalOpen = false,
+                        errorMessage = "Google Drive Sign-In successful!"
                     )
                 }
                 saveConfig()
@@ -293,15 +341,34 @@ class MainViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val state = _uiState.value
-                AuthTokenHolder.currentToken = state.authData
-                val items = getFolderContentsUseCase(
-                    folderId = null,
-                    storageType = state.storageType,
-                    authData = state.authData,
-                    rootFolder = state.rootFolder,
-                    forceRefresh = forceRefresh
-                )
-                val artistFolders = items.filterIsInstance<MediaItem.Folder>()
+                val cachedArtists = metadataRepository.getAllCachedArtists()
+                if (cachedArtists.isNotEmpty() && !forceRefresh) {
+                    _uiState.update {
+                        it.copy(
+                            currentLevel = TreeLevel.Artists,
+                            artists = cachedArtists,
+                            isLoading = false
+                        )
+                    }
+                    return@launch
+                }
+
+                val hasGoogle = state.googleAuthData.isNotBlank()
+                val hasDropbox = state.dropboxAuthData.isNotBlank()
+
+                if ((cachedArtists.isEmpty() || forceRefresh) && (hasGoogle || hasDropbox)) {
+                    metadataRepository.clearCache()
+                    if (hasGoogle) {
+                        AuthTokenHolder.currentToken = state.googleAuthData
+                        syncLibraryCacheUseCase(StorageType.GOOGLE_DRIVE, state.googleAuthData, state.googleRootFolder, false)
+                    }
+                    if (hasDropbox) {
+                        AuthTokenHolder.currentToken = state.dropboxAuthData
+                        syncLibraryCacheUseCase(StorageType.DROPBOX, state.dropboxAuthData, state.dropboxRootFolder, false)
+                    }
+                }
+
+                val artistFolders = metadataRepository.getAllCachedArtists()
                 _uiState.update {
                     it.copy(
                         currentLevel = TreeLevel.Artists,
@@ -565,8 +632,41 @@ class MainViewModel @Inject constructor(
             _uiState.update { it.copy(isSyncing = true, errorMessage = null) }
             try {
                 val state = _uiState.value
-                AuthTokenHolder.currentToken = state.authData
-                syncLibraryCacheUseCase(state.storageType, state.authData, state.rootFolder)
+                val hasGoogle = state.googleAuthData.isNotBlank()
+                val hasDropbox = state.dropboxAuthData.isNotBlank()
+
+                if (!hasGoogle && !hasDropbox) {
+                    _uiState.update {
+                        it.copy(
+                            isSyncing = false,
+                            errorMessage = "Please sign in to Google Drive or Dropbox first"
+                        )
+                    }
+                    return@launch
+                }
+
+                metadataRepository.clearCache()
+
+                if (hasGoogle) {
+                    AuthTokenHolder.currentToken = state.googleAuthData
+                    syncLibraryCacheUseCase(
+                        storageType = StorageType.GOOGLE_DRIVE,
+                        authData = state.googleAuthData,
+                        rootFolder = state.googleRootFolder,
+                        clearCacheFirst = false
+                    )
+                }
+
+                if (hasDropbox) {
+                    AuthTokenHolder.currentToken = state.dropboxAuthData
+                    syncLibraryCacheUseCase(
+                        storageType = StorageType.DROPBOX,
+                        authData = state.dropboxAuthData,
+                        rootFolder = state.dropboxRootFolder,
+                        clearCacheFirst = false
+                    )
+                }
+
                 _uiState.update { it.copy(isSyncing = false) }
                 if (state.currentLevel is TreeLevel.FlatAlbums) {
                     loadFlatAlbums()
