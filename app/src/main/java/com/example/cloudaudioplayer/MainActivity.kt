@@ -200,10 +200,13 @@ fun MainAppScreen(
                     onGoogleSignInClick = {
                         viewModel.startGoogleSignIn(googleSignInLauncher)
                     },
-                    onDropboxSignInClick = { appKey ->
+                    onDropboxSignInClick = {
                         if (activity != null) {
-                            viewModel.startDropboxSignIn(activity, appKey)
+                            viewModel.startDropboxSignIn(activity)
                         }
+                    },
+                    onSignOutClick = {
+                        viewModel.signOut()
                     },
                     onBrowseFoldersClick = {
                         viewModel.openFolderPicker()

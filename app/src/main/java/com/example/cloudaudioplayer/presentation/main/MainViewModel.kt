@@ -12,10 +12,11 @@ import com.example.cloudaudioplayer.application.SyncLibraryCacheUseCase
 import com.example.cloudaudioplayer.domain.model.MediaItem
 import com.example.cloudaudioplayer.domain.model.PlaybackState
 import com.example.cloudaudioplayer.domain.model.StorageType
+import com.example.cloudaudioplayer.BuildConfig
 import com.example.cloudaudioplayer.domain.repository.AudioPlayerRepository
 import com.example.cloudaudioplayer.domain.repository.CloudStorageRepository
+import com.example.cloudaudioplayer.domain.repository.MetadataRepository
 import com.example.cloudaudioplayer.infrastructure.storage.AuthTokenHolder
-import com.example.cloudaudioplayer.infrastructure.storage.DropboxConfig
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -66,7 +67,8 @@ class MainViewModel @Inject constructor(
     private val streamAudioUseCase: StreamAudioUseCase,
     private val syncLibraryCacheUseCase: SyncLibraryCacheUseCase,
     private val cloudStorageRepository: CloudStorageRepository,
-    private val audioPlayerRepository: AudioPlayerRepository
+    private val audioPlayerRepository: AudioPlayerRepository,
+    private val metadataRepository: MetadataRepository
 ) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("cloud_audio_prefs", android.content.Context.MODE_PRIVATE)
@@ -124,10 +126,10 @@ class MainViewModel @Inject constructor(
         loadArtists(forceRefresh = true)
     }
 
-    fun startDropboxSignIn(activity: android.app.Activity, appKey: String) {
-        val keyToUse = if (appKey.isNotBlank()) appKey.trim() else DropboxConfig.DEFAULT_APP_KEY
+    fun startDropboxSignIn(activity: android.app.Activity) {
+        val keyToUse = BuildConfig.DROPBOX_APP_KEY
         if (keyToUse.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Please enter your Dropbox App Key or configure DropboxConfig.DEFAULT_APP_KEY") }
+            _uiState.update { it.copy(errorMessage = "Please configure DROPBOX_APP_KEY in local.properties") }
             return
         }
         _uiState.update { it.copy(dropboxAppKey = keyToUse) }
@@ -139,6 +141,26 @@ class MainViewModel @Inject constructor(
         } catch (e: Exception) {
             _uiState.update { it.copy(errorMessage = "Failed to launch Dropbox sign-in: ${e.message}") }
         }
+    }
+
+    fun signOut() {
+        AuthTokenHolder.currentToken = ""
+        _uiState.update {
+            it.copy(
+                authData = "",
+                artists = emptyList(),
+                albums = emptyList(),
+                flatAlbums = emptyList(),
+                tracks = emptyList(),
+                isAuthModalOpen = false,
+                errorMessage = "Signed out successfully"
+            )
+        }
+        saveConfig()
+        viewModelScope.launch {
+            metadataRepository.clearCache()
+        }
+        loadArtists(forceRefresh = true)
     }
 
     fun handleDropboxToken(token: String) {

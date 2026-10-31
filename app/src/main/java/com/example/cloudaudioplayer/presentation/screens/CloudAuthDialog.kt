@@ -38,14 +38,14 @@ fun CloudAuthDialog(
     currentRootFolder: String,
     onSave: (StorageType, String, String) -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onDropboxSignInClick: (String) -> Unit,
+    onDropboxSignInClick: () -> Unit,
+    onSignOutClick: () -> Unit,
     onBrowseFoldersClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedType by remember { mutableStateOf(currentStorageType) }
     var tokenInput by remember { mutableStateOf(currentAuthData) }
     var rootFolderInput by remember { mutableStateOf(currentRootFolder) }
-    var appKeyInput by remember { mutableStateOf("") }
 
     androidx.compose.runtime.LaunchedEffect(currentRootFolder) {
         rootFolderInput = currentRootFolder
@@ -155,64 +155,55 @@ fun CloudAuthDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (selectedType == StorageType.GOOGLE_DRIVE) {
+                    val isGoogleLoggedIn = currentStorageType == StorageType.GOOGLE_DRIVE && currentAuthData.isNotBlank()
                     Button(
-                        onClick = onGoogleSignInClick,
+                        onClick = if (isGoogleLoggedIn) onSignOutClick else onGoogleSignInClick,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isGoogleLoggedIn) Color(0xFFD32F2F) else Color(0xFF4285F4)
+                        )
                     ) {
                         Text(
-                            text = "Sign in with Google Account",
+                            text = if (isGoogleLoggedIn) "Sign out of Google Drive" else "Sign in with Google Account",
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "— OR PASTE TOKEN MANUALLY —",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                } else if (selectedType == StorageType.DROPBOX) {
-                    BidiText(
-                        text = "Dropbox App Key (Client ID):",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = appKeyInput,
-                        onValueChange = { appKeyInput = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Enter Dropbox App Key") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                    if (!isGoogleLoggedIn) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "— OR PASTE TOKEN MANUALLY —",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
                         )
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                } else if (selectedType == StorageType.DROPBOX) {
+                    val isDropboxLoggedIn = currentStorageType == StorageType.DROPBOX && currentAuthData.isNotBlank()
                     Button(
-                        onClick = { onDropboxSignInClick(appKeyInput) },
+                        onClick = if (isDropboxLoggedIn) onSignOutClick else onDropboxSignInClick,
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0061FF))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isDropboxLoggedIn) Color(0xFFD32F2F) else Color(0xFF0061FF)
+                        )
                     ) {
                         Text(
-                            text = "Sign in with Dropbox",
+                            text = if (isDropboxLoggedIn) "Sign out of Dropbox" else "Sign in with Dropbox",
                             color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "— OR PASTE TOKEN MANUALLY —",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (!isDropboxLoggedIn) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "— OR PASTE TOKEN MANUALLY —",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                 }
 
                 BidiText(
