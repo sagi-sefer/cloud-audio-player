@@ -106,6 +106,8 @@ class MainViewModel @Inject constructor(
         val savedAppKey = prefs.getString("dropbox_app_key", "") ?: ""
 
         val activeToken = if (savedType == StorageType.GOOGLE_DRIVE) googleToken else dropboxToken
+        AuthTokenHolder.googleToken = googleToken
+        AuthTokenHolder.dropboxToken = dropboxToken
         AuthTokenHolder.currentToken = activeToken
 
         _uiState.update {
@@ -118,6 +120,14 @@ class MainViewModel @Inject constructor(
                 dropboxAppKey = savedAppKey
             )
         }
+        updateAuthTokens()
+    }
+
+    private fun updateAuthTokens() {
+        val state = _uiState.value
+        AuthTokenHolder.googleToken = state.googleAuthData
+        AuthTokenHolder.dropboxToken = state.dropboxAuthData
+        AuthTokenHolder.currentToken = if (state.storageType == StorageType.GOOGLE_DRIVE) state.googleAuthData else state.dropboxAuthData
     }
 
     private fun saveConfig() {
@@ -150,7 +160,7 @@ class MainViewModel @Inject constructor(
                 isAuthModalOpen = false
             )
         }
-        AuthTokenHolder.currentToken = if (type == StorageType.GOOGLE_DRIVE) googleToken else dropboxToken
+        updateAuthTokens()
         saveConfig()
         loadArtists(forceRefresh = true)
     }
@@ -170,7 +180,7 @@ class MainViewModel @Inject constructor(
                 isAuthModalOpen = false
             )
         }
-        AuthTokenHolder.currentToken = token
+        updateAuthTokens()
         saveConfig()
         loadArtists(forceRefresh = true)
     }
@@ -226,7 +236,7 @@ class MainViewModel @Inject constructor(
             }
         }
 
-        AuthTokenHolder.currentToken = _uiState.value.authData
+        updateAuthTokens()
         saveConfig()
         viewModelScope.launch {
             metadataRepository.clearCache()
@@ -239,7 +249,6 @@ class MainViewModel @Inject constructor(
     }
 
     fun handleDropboxToken(token: String) {
-        AuthTokenHolder.currentToken = token
         _uiState.update {
             it.copy(
                 storageType = StorageType.DROPBOX,
@@ -248,6 +257,7 @@ class MainViewModel @Inject constructor(
                 errorMessage = "Dropbox Sign-In successful!"
             )
         }
+        updateAuthTokens()
         saveConfig()
         loadArtists(forceRefresh = true)
     }
@@ -346,7 +356,6 @@ class MainViewModel @Inject constructor(
                         "oauth2:https://www.googleapis.com/auth/drive.readonly"
                     )
                 }
-                AuthTokenHolder.currentToken = token
                 _uiState.update {
                     it.copy(
                         storageType = StorageType.GOOGLE_DRIVE,
@@ -355,6 +364,7 @@ class MainViewModel @Inject constructor(
                         errorMessage = "Google Drive Sign-In successful!"
                     )
                 }
+                updateAuthTokens()
                 saveConfig()
                 loadArtists(forceRefresh = true)
             } catch (e: Exception) {

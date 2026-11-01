@@ -38,6 +38,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
             val searchResult = service.files().list()
                 .setQ(searchQuery)
                 .setFields("files(id, name)")
+                .setSupportsAllDrives(true)
+                .setIncludeItemsFromAllDrives(true)
                 .execute()
             searchResult.files?.firstOrNull()?.id ?: throw IllegalArgumentException("Folder '$rootFolder' not found in Google Drive. Please check folder name or use Browse.")
         } else {
@@ -49,6 +51,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
             .setQ(query)
             .setOrderBy("name")
             .setFields("files(id, name)")
+            .setSupportsAllDrives(true)
+            .setIncludeItemsFromAllDrives(true)
             .execute()
 
         result.files?.map { file ->
@@ -73,6 +77,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
             .setQ(query)
             .setOrderBy("name")
             .setFields("files(id, name, mimeType, size)")
+            .setSupportsAllDrives(true)
+            .setIncludeItemsFromAllDrives(true)
             .execute()
 
         val items = mutableListOf<MediaItem>()
@@ -115,7 +121,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
         track: MediaItem.AudioTrack,
         authData: String
     ): String {
-        return "https://www.googleapis.com/drive/v3/files/${track.id}?alt=media"
+        val encodedToken = java.net.URLEncoder.encode(authData, "UTF-8")
+        return "https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&access_token=$encodedToken"
     }
 
     override suspend fun fetchAlbumCoverUrl(
@@ -131,6 +138,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
                 .setQ(query)
                 .setPageSize(1000)
                 .setFields("files(id, name, mimeType)")
+                .setSupportsAllDrives(true)
+                .setIncludeItemsFromAllDrives(true)
                 .execute()
 
             val files = result.files ?: emptyList()
@@ -151,9 +160,10 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
                 mime.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")
             }
 
+            android.util.Log.d("GoogleDriveAdapter", "Folder '$folderId' cover art matched: ${coverFile?.name} (out of ${files.size} files)")
+
             if (coverFile != null) {
-                val encodedToken = java.net.URLEncoder.encode(authData, "UTF-8")
-                "https://www.googleapis.com/drive/v3/files/${coverFile.id}?alt=media&access_token=$encodedToken"
+                "https://www.googleapis.com/drive/v3/files/${coverFile.id}?alt=media"
             } else null
         } catch (e: Exception) {
             android.util.Log.e("GoogleDriveAdapter", "Error fetching album cover url for folder '$folderId': ${e.message}", e)

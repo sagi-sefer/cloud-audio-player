@@ -19,11 +19,21 @@ object NetworkModule {
     fun provideOkHttpClient(): OkHttpClient {
         val authInterceptor = Interceptor { chain ->
             var request = chain.request()
-            val token = AuthTokenHolder.currentToken
-            if (token.isNotBlank() && request.url.host.contains("googleapis.com") && request.header("Authorization") == null && request.url.queryParameter("access_token") == null) {
-                request = request.newBuilder()
-                    .header("Authorization", "Bearer $token")
-                    .build()
+            val host = request.url.host
+            val headerAuth = request.header("Authorization")
+
+            if (headerAuth == null) {
+                val token = if (host.contains("googleapis.com") || host.contains("googleusercontent.com")) {
+                    AuthTokenHolder.googleToken.ifBlank { AuthTokenHolder.currentToken }
+                } else if (host.contains("dropboxapi.com") || host.contains("dropboxusercontent.com") || host.contains("dl.dropboxusercontent.com")) {
+                    AuthTokenHolder.dropboxToken.ifBlank { AuthTokenHolder.currentToken }
+                } else ""
+
+                if (token.isNotBlank()) {
+                    request = request.newBuilder()
+                        .header("Authorization", "Bearer $token")
+                        .build()
+                }
             }
             chain.proceed(request)
         }
