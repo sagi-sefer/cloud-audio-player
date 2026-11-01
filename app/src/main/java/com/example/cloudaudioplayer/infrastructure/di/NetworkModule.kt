@@ -20,7 +20,7 @@ object NetworkModule {
         val authInterceptor = Interceptor { chain ->
             var request = chain.request()
             val token = AuthTokenHolder.currentToken
-            if (token.isNotBlank() && request.url.host.contains("googleapis.com")) {
+            if (token.isNotBlank() && request.url.host.contains("googleapis.com") && request.header("Authorization") == null && request.url.queryParameter("access_token") == null) {
                 request = request.newBuilder()
                     .header("Authorization", "Bearer $token")
                     .build()

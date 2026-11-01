@@ -130,12 +130,17 @@ fun MainAppScreen(
             when (val level = uiState.currentLevel) {
                 is TreeLevel.Artists -> {
                     ArtistListScreen(
+                        selectedTab = 0,
                         artists = uiState.artists,
+                        flatAlbums = uiState.flatAlbums,
                         storageType = uiState.storageType,
                         isLoading = uiState.isLoading,
                         isSyncing = uiState.isSyncing,
                         onArtistClick = { artist -> viewModel.navigateToAlbums(artist) },
                         onFlatAlbumsClick = { viewModel.loadFlatAlbums() },
+                        onArtistsTabClick = { viewModel.loadArtists() },
+                        onAlbumClick = { album -> viewModel.navigateToFlatAlbumTracks(album) },
+                        onAlbumPlayClick = { album -> viewModel.playFlatAlbum(album) },
                         onSyncClick = { viewModel.syncLibrary() },
                         onSettingsClick = { viewModel.toggleAuthModal(true) }
                     )
@@ -165,13 +170,20 @@ fun MainAppScreen(
                 }
 
                 is TreeLevel.FlatAlbums -> {
-                    AlbumGridScreen(
-                        artist = MediaItem.Folder(id = "flat", name = "LIBRARY", path = ""),
-                        albums = uiState.flatAlbums,
+                    ArtistListScreen(
+                        selectedTab = 1,
+                        artists = uiState.artists,
+                        flatAlbums = uiState.flatAlbums,
+                        storageType = uiState.storageType,
                         isLoading = uiState.isLoading,
+                        isSyncing = uiState.isSyncing,
+                        onArtistClick = { artist -> viewModel.navigateToAlbums(artist) },
+                        onFlatAlbumsClick = { viewModel.loadFlatAlbums() },
+                        onArtistsTabClick = { viewModel.loadArtists() },
                         onAlbumClick = { album -> viewModel.navigateToFlatAlbumTracks(album) },
                         onAlbumPlayClick = { album -> viewModel.playFlatAlbum(album) },
-                        onBackClick = { viewModel.loadArtists() }
+                        onSyncClick = { viewModel.syncLibrary() },
+                        onSettingsClick = { viewModel.toggleAuthModal(true) }
                     )
                 }
 
@@ -207,8 +219,8 @@ fun MainAppScreen(
                             viewModel.startDropboxSignIn(activity)
                         }
                     },
-                    onSignOutClick = {
-                        viewModel.signOutActive()
+                    onSignOutClick = { type ->
+                        viewModel.signOutProvider(type)
                     },
                     onBrowseFoldersClick = {
                         viewModel.openFolderPicker()

@@ -30,6 +30,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,7 +142,7 @@ fun AlbumGridScreen(
 }
 
 @Composable
-private fun AlbumCard(
+fun AlbumCard(
     album: MediaItem.Folder,
     onClick: () -> Unit,
     onPlayClick: () -> Unit
@@ -181,6 +182,23 @@ private fun AlbumCard(
                     contentScale = ContentScale.Crop
                 )
 
+                // Storage Badge Overlay on top-left of album art
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (album.storageType == com.example.cloudaudioplayer.domain.model.StorageType.GOOGLE_DRIVE) "Drive" else "Dropbox",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 // Spotify-style Play Button Overlay on album art
                 FloatingActionButton(
                     onClick = onPlayClick,
@@ -209,6 +227,15 @@ private fun AlbumCard(
                 color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = if (album.storageType == com.example.cloudaudioplayer.domain.model.StorageType.GOOGLE_DRIVE) "Drive" else "Dropbox",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium
             )
         }
     }

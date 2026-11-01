@@ -11,12 +11,11 @@
 * **Authentication State & Sign-Out**:
   * Auth tokens, storage types, and root folder paths are persisted independently for both Google Drive and Dropbox across app sessions via `SharedPreferences`, enabling both cloud providers to be configured and connected in parallel.
   * `CloudAuthDialog` maintains separate configuration states for Google Drive and Dropbox, preventing cross-contamination of root folders or auth tokens when switching between providers.
-  * `CloudAuthDialog` provides dynamic Sign-In / Sign-Out buttons that toggle based on each provider's active login state. Signing out clears the active provider's credentials and flushes local Room database cache.
+  * `CloudAuthDialog` provides dynamic Sign-In / Sign-Out buttons that toggle based on each provider's active login state. Signing out clears the active provider's credentials, revokes the Google Sign-In client session (`GoogleSignIn.getClient(...).signOut()`), keeps the settings modal open, and immediately updates the UI to display the blue **"Sign in with Google Account"** or **"Sign in with Dropbox"** button.
 
 ## 2. Key Technical Decisions & Solved Issues
-* **Coil Authentication for Drive Images**:
-  * Google Drive media URLs (`https://www.googleapis.com/drive/v3/files/{id}?alt=media`) require an `Authorization: Bearer <token>` header.
-  * Solved via a custom `OkHttpClient` interceptor (`NetworkModule` & `AuthTokenHolder`) that injects the active bearer token into all `googleapis.com` image requests made by Coil.
+* **Coil Authentication & Embedded Token for Drive Cover Images**:
+  * Google Drive media URLs for cover art now embed the `access_token` parameter directly (`https://www.googleapis.com/drive/v3/files/{id}?alt=media&access_token={token}`) and expanded case-insensitive matching to support `cover.jpg`, `cover.jpeg`, `cover.png`, `cover.webp`, `folder.jpg`, `album.jpg`, `front.jpg`, `art.jpg`, and fallback image files across all pages up to 1000 items. This allows Coil image loading to succeed consistently regardless of active provider or interceptor state.
 * **Case-Insensitive Cover Art Discovery**:
   * Album cover art (`cover.jpg`, `cover.png`, `folder.jpg`, `album.jpg`) is searched case-insensitively across Google Drive and Dropbox folders.
 * **Parallel Multi-Cloud Library Sync**:
@@ -28,6 +27,10 @@
   * `Media3PlayerAdapter` listens to `Player.STATE_ENDED` events to automatically advance and start playing the next track in the album queue, stopping playback cleanly at the end of the final track without looping.
 * **Track Ordering**:
   * Both Google Drive and Dropbox storage adapters sort files and folders alphabetically by name (`01 - ...`, `02 - ...`) to maintain correct CD track order.
+* **Top Bar Header Redesign & Element Storage Badges**:
+  * Removed provider badge from top header next to `CD COLLECTION` text to keep header minimal and clean.
+  * Added `storageType` property to `MediaItem.Folder` (Artists & Albums) and displayed storage source labels (`Drive` / `Dropbox`) directly on each individual Artist list card and Album grid card.
+  * Preserved two-row navigation tabs (`ARTISTS` / `ALBUMS`) with high-contrast active indicators.
 
 ## 3. Future Development Roadmap
 1. **Offline Caching**: Enhance Room caching to allow full offline playback of downloaded tracks.

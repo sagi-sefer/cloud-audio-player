@@ -28,7 +28,8 @@ data class MediaItemEntity(
                 name = name,
                 path = path,
                 parentId = parentFolderId,
-                coverArtUrl = coverArtUrl
+                coverArtUrl = coverArtUrl,
+                storageType = runCatching { StorageType.valueOf(storageType) }.getOrDefault(StorageType.GOOGLE_DRIVE)
             )
         } else {
             MediaItem.AudioTrack(
@@ -55,7 +56,8 @@ data class MediaItemEntity(
                     name = item.name,
                     path = item.path,
                     isFolder = true,
-                    coverArtUrl = item.coverArtUrl
+                    coverArtUrl = item.coverArtUrl,
+                    storageType = item.storageType.name
                 )
                 is MediaItem.AudioTrack -> MediaItemEntity(
                     id = item.id,

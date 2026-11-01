@@ -192,21 +192,50 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun signOutActive() {
-        val type = _uiState.value.storageType
+    fun signOutProvider(type: StorageType) {
         _uiState.update { state ->
             if (type == StorageType.GOOGLE_DRIVE) {
-                state.copy(googleAuthData = "", artists = emptyList(), albums = emptyList(), flatAlbums = emptyList(), tracks = emptyList(), isAuthModalOpen = false, errorMessage = "Signed out of Google Drive")
+                state.copy(
+                    googleAuthData = "",
+                    artists = emptyList(),
+                    albums = emptyList(),
+                    flatAlbums = emptyList(),
+                    tracks = emptyList(),
+                    errorMessage = "Signed out of Google Drive"
+                )
             } else {
-                state.copy(dropboxAuthData = "", artists = emptyList(), albums = emptyList(), flatAlbums = emptyList(), tracks = emptyList(), isAuthModalOpen = false, errorMessage = "Signed out of Dropbox")
+                state.copy(
+                    dropboxAuthData = "",
+                    artists = emptyList(),
+                    albums = emptyList(),
+                    flatAlbums = emptyList(),
+                    tracks = emptyList(),
+                    errorMessage = "Signed out of Dropbox"
+                )
             }
         }
+
+        if (type == StorageType.GOOGLE_DRIVE) {
+            try {
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestEmail()
+                    .build()
+                GoogleSignIn.getClient(getApplication<Application>(), gso).signOut()
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Error signing out of GoogleSignInClient: ${e.message}")
+            }
+        }
+
         AuthTokenHolder.currentToken = _uiState.value.authData
         saveConfig()
         viewModelScope.launch {
             metadataRepository.clearCache()
         }
         loadArtists(forceRefresh = true)
+    }
+
+    fun signOutActive() {
+        signOutProvider(_uiState.value.storageType)
     }
 
     fun handleDropboxToken(token: String) {

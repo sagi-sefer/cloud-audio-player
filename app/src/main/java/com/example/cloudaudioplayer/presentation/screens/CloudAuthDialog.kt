@@ -41,7 +41,7 @@ fun CloudAuthDialog(
     onSave: (StorageType, String, String, String, String) -> Unit,
     onGoogleSignInClick: () -> Unit,
     onDropboxSignInClick: () -> Unit,
-    onSignOutClick: () -> Unit,
+    onSignOutClick: (StorageType) -> Unit,
     onBrowseFoldersClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -168,7 +168,13 @@ fun CloudAuthDialog(
                 if (selectedType == StorageType.GOOGLE_DRIVE) {
                     val isGoogleLoggedIn = googleTokenInput.isNotBlank()
                     Button(
-                        onClick = if (isGoogleLoggedIn) onSignOutClick else onGoogleSignInClick,
+                        onClick = {
+                            if (isGoogleLoggedIn) {
+                                onSignOutClick(StorageType.GOOGLE_DRIVE)
+                            } else {
+                                onGoogleSignInClick()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isGoogleLoggedIn) Color(0xFFD32F2F) else Color(0xFF4285F4)
@@ -193,7 +199,13 @@ fun CloudAuthDialog(
                 } else if (selectedType == StorageType.DROPBOX) {
                     val isDropboxLoggedIn = dropboxAuthCurrent.isNotBlank()
                     Button(
-                        onClick = if (isDropboxLoggedIn) onSignOutClick else onDropboxSignInClick,
+                        onClick = {
+                            if (isDropboxLoggedIn) {
+                                onSignOutClick(StorageType.DROPBOX)
+                            } else {
+                                onDropboxSignInClick()
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isDropboxLoggedIn) Color(0xFFD32F2F) else Color(0xFF0061FF)
@@ -241,5 +253,45 @@ fun CloudAuthDialog(
                 }
             }
         }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun CloudAuthDialogLoggedInPreview() {
+    com.example.cloudaudioplayer.presentation.theme.CloudAudioPlayerTheme {
+        CloudAuthDialog(
+            currentStorageType = StorageType.GOOGLE_DRIVE,
+            currentGoogleAuth = "sample_token",
+            currentGoogleRoot = "Music",
+            currentDropboxAuth = "",
+            currentDropboxRoot = "Music",
+            onSave = { _, _, _, _, _ -> },
+            onGoogleSignInClick = {},
+            onDropboxSignInClick = {},
+            onSignOutClick = {},
+            onBrowseFoldersClick = {},
+            onDismiss = {}
+        )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview
+@Composable
+private fun CloudAuthDialogLoggedOutPreview() {
+    com.example.cloudaudioplayer.presentation.theme.CloudAudioPlayerTheme {
+        CloudAuthDialog(
+            currentStorageType = StorageType.GOOGLE_DRIVE,
+            currentGoogleAuth = "",
+            currentGoogleRoot = "Music",
+            currentDropboxAuth = "",
+            currentDropboxRoot = "Music",
+            onSave = { _, _, _, _, _ -> },
+            onGoogleSignInClick = {},
+            onDropboxSignInClick = {},
+            onSignOutClick = {},
+            onBrowseFoldersClick = {},
+            onDismiss = {}
+        )
     }
 }

@@ -42,7 +42,8 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
                         id = folderPath,
                         name = folder.name,
                         path = folderPath,
-                        parentId = if (path.isEmpty()) "root" else path
+                        parentId = if (path.isEmpty()) "root" else path,
+                        storageType = StorageType.DROPBOX
                     )
                 }
             android.util.Log.d("DropboxStorageAdapter", "Found ${folders.size} folders at '$path'")
@@ -75,7 +76,8 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
                                 id = folderPath,
                                 name = entry.name,
                                 path = folderPath,
-                                parentId = folderId
+                                parentId = folderId,
+                                storageType = StorageType.DROPBOX
                             )
                         )
                     }
@@ -131,16 +133,27 @@ class DropboxStorageAdapter @Inject constructor() : CloudStorageRepository {
             val path = if (folderId == "root" || folderId.isEmpty()) "" else folderId
             val result = client.files().listFolder(path)
 
-            val coverEntry = result.entries.filterIsInstance<FileMetadata>().firstOrNull { file ->
+            val files = result.entries.filterIsInstance<FileMetadata>()
+
+            val coverEntry = files.firstOrNull { file ->
                 val name = file.name.lowercase()
-                name == "cover.jpg" || name == "cover.png" || name == "folder.jpg"
+                name == "cover.jpg" || name == "cover.jpeg" || name == "cover.png" || name == "cover.webp" ||
+                name == "folder.jpg" || name == "folder.jpeg" || name == "folder.png" || name == "folder.webp" ||
+                name == "album.jpg" || name == "album.jpeg" || name == "album.png" || name == "album.webp" ||
+                name == "front.jpg" || name == "front.jpeg" || name == "front.png" ||
+                name == "art.jpg" || name == "art.png" ||
+                name.startsWith("cover") || name.startsWith("folder") || name.startsWith("album")
+            } ?: files.firstOrNull { file ->
+                val name = file.name.lowercase()
+                name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")
             }
 
             if (coverEntry != null) {
                 val tempLink = client.files().getTemporaryLink(coverEntry.pathLower)
                 tempLink.link
             } else null
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("DropboxStorageAdapter", "Error fetching album cover url for folder '$folderId': ${e.message}", e)
             null
         }
     }

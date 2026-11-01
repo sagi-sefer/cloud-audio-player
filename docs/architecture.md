@@ -54,8 +54,9 @@ com.example.cloudaudioplayer/
   * `BidiText`: Text wrapper enforcing `TextDirection.ContentOrLtr` for clean English and Hebrew rendering.
   * `DrivingControls`, `MiniPlayer`, `FullScreenPlayer`: Car-friendly playback UI.
 * **Screens & Navigation**:
-  * Dual View Mode Navigation from Welcome Screen:
-    1. **Navigate by Artist ➔ Albums** (Hierarchical browse via `ArtistListScreen` -> `AlbumGridScreen` -> `TrackListScreen`).
-    2. **Flat Albums List** (Global album grid via `AlbumGridScreen` -> `TrackListScreen`).
+  * Dual View Mode Navigation from Main Screen Tabs:
+    1. **Top Header**: App title (`CD COLLECTION`), cloud provider badge (`Drive`/`Dropbox`), `Sync` action button, and `Settings` action button.
+    2. **Navigation Tabs**: Next-level tab row (`ARTISTS` tab for hierarchical browse via `ArtistListScreen`, `ALBUMS` tab for global flat album grid).
+    3. **Hierarchy**: `Main Screen (Artists / Albums Tabs)` -> `AlbumGridScreen` -> `TrackListScreen`.
   * `CloudAuthDialog` & `CloudFolderPickerDialog`: Cloud account authentication and folder browser picker.
   * `MainViewModel`: Coordinates state, tree navigation, view modes, authentication, and playback.

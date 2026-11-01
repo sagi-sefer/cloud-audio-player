@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,10 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.cloudaudioplayer.domain.model.MediaItem
 import com.example.cloudaudioplayer.domain.model.StorageType
 import com.example.cloudaudioplayer.presentation.components.BidiText
+import com.example.cloudaudioplayer.presentation.theme.CloudAudioPlayerTheme
 
 @Composable
 fun ArtistListScreen(
@@ -49,7 +55,12 @@ fun ArtistListScreen(
     onFlatAlbumsClick: () -> Unit,
     onSyncClick: () -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedTab: Int = 0,
+    flatAlbums: List<MediaItem.Folder> = emptyList(),
+    onAlbumClick: (MediaItem.Folder) -> Unit = {},
+    onAlbumPlayClick: (MediaItem.Folder) -> Unit = {},
+    onArtistsTabClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -57,57 +68,27 @@ fun ArtistListScreen(
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        // Top Bar
+        // TOP LEVEL ROW: App Name, Provider Badge, Sync Button, Settings Button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 12.dp),
+                .padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                BidiText(
-                    text = "CD COLLECTION",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    BidiText(
-                        text = "ARTISTS",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    BidiText(
-                        text = "ALBUMS",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onFlatAlbumsClick() }
-                    )
-                }
-            }
+            // App Name
+            BidiText(
+                text = "CD COLLECTION",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Provider Badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = if (storageType == StorageType.GOOGLE_DRIVE) "Drive" else "Dropbox",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
+            // Action Controls
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 IconButton(
                     onClick = onSyncClick,
                     enabled = !isSyncing
@@ -123,7 +104,7 @@ fun ArtistListScreen(
                             imageVector = Icons.Default.CloudSync,
                             contentDescription = "Sync Library",
                             tint = Color.White,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
@@ -133,14 +114,66 @@ fun ArtistListScreen(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Settings",
                         tint = Color.White,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
         }
 
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // NEXT LEVEL ROW: Navigation Tabs (1 navigate by artist, 1 navigate by album)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Tab 1: Navigate by Artist
+            Column(
+                modifier = Modifier.clickable { onArtistsTabClick() }
+            ) {
+                BidiText(
+                    text = "ARTISTS",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = if (selectedTab == 0) Color.White else Color.Gray,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .height(3.dp)
+                        .width(48.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (selectedTab == 0) MaterialTheme.colorScheme.primary else Color.Transparent)
+                )
+            }
+
+            // Tab 2: Navigate by Album
+            Column(
+                modifier = Modifier.clickable { onFlatAlbumsClick() }
+            ) {
+                BidiText(
+                    text = "ALBUMS",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = if (selectedTab == 1) Color.White else Color.Gray,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Box(
+                    modifier = Modifier
+                        .height(3.dp)
+                        .width(48.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (selectedTab == 1) MaterialTheme.colorScheme.primary else Color.Transparent)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
 
+        // CONTENT AREA (Artists list or Flat Albums grid)
         if (isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -148,35 +181,76 @@ fun ArtistListScreen(
             ) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
-        } else if (artists.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    BidiText(
-                        text = "No artists found in cloud folder",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    BidiText(
-                        text = "Tap settings icon to configure auth or tap sync",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.DarkGray
-                    )
+        } else if (selectedTab == 0) {
+            // ARTISTS TAB CONTENT
+            if (artists.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        BidiText(
+                            text = "No artists found in cloud folder",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        BidiText(
+                            text = "Tap settings icon to configure auth or tap sync",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.DarkGray
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(artists, key = { it.id }) { artist ->
+                        ArtistCard(
+                            artist = artist,
+                            onClick = { onArtistClick(artist) }
+                        )
+                    }
                 }
             }
         } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(artists, key = { it.id }) { artist ->
-                    ArtistCard(
-                        artist = artist,
-                        onClick = { onArtistClick(artist) }
-                    )
+            // ALBUMS TAB CONTENT
+            if (flatAlbums.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        BidiText(
+                            text = "No albums found in cloud folder",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        BidiText(
+                            text = "Tap settings icon to configure auth or tap sync",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.DarkGray
+                        )
+                    }
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(flatAlbums, key = { it.id }) { album ->
+                        AlbumCard(
+                            album = album,
+                            onClick = { onAlbumClick(album) },
+                            onPlayClick = { onAlbumPlayClick(album) }
+                        )
+                    }
                 }
             }
         }
@@ -226,12 +300,21 @@ private fun ArtistCard(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                BidiText(
-                    text = artist.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
+                Column {
+                    BidiText(
+                        text = artist.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = if (artist.storageType == StorageType.GOOGLE_DRIVE) "Drive" else "Dropbox",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
             Icon(
@@ -243,3 +326,50 @@ private fun ArtistCard(
         }
     }
 }
+
+@Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun ArtistListScreenPreview() {
+    CloudAudioPlayerTheme {
+        ArtistListScreen(
+            selectedTab = 0,
+            artists = listOf(
+                MediaItem.Folder("1", "חיים יבין", "", storageType = StorageType.GOOGLE_DRIVE),
+                MediaItem.Folder("2", "תיסלם", "", storageType = StorageType.DROPBOX),
+                MediaItem.Folder("3", "חיים יבין - בבר", "", storageType = StorageType.GOOGLE_DRIVE),
+                MediaItem.Folder("4", "תיסלם אלבומים", "", storageType = StorageType.DROPBOX)
+            ),
+            storageType = StorageType.DROPBOX,
+            isLoading = false,
+            isSyncing = false,
+            onArtistClick = {},
+            onFlatAlbumsClick = {},
+            onSyncClick = {},
+            onSettingsClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF121212)
+@Composable
+private fun AlbumsTabPreview() {
+    CloudAudioPlayerTheme {
+        ArtistListScreen(
+            selectedTab = 1,
+            artists = emptyList(),
+            flatAlbums = listOf(
+                MediaItem.Folder("101", "רדיו חזק", "", storageType = StorageType.GOOGLE_DRIVE),
+                MediaItem.Folder("102", "תיסלם 2", "", storageType = StorageType.DROPBOX),
+                MediaItem.Folder("103", "שירים נוספים", "", storageType = StorageType.GOOGLE_DRIVE)
+            ),
+            storageType = StorageType.DROPBOX,
+            isLoading = false,
+            isSyncing = false,
+            onArtistClick = {},
+            onFlatAlbumsClick = {},
+            onSyncClick = {},
+            onSettingsClick = {}
+        )
+    }
+}
+

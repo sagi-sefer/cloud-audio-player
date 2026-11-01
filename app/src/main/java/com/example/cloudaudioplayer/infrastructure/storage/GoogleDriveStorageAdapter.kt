@@ -56,7 +56,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
                 id = file.id,
                 name = file.name ?: "Unknown Artist",
                 path = "/${file.name}",
-                parentId = parentId
+                parentId = parentId,
+                storageType = StorageType.GOOGLE_DRIVE
             )
         }?.sortedBy { it.name } ?: emptyList()
     }
@@ -83,7 +84,8 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
                         id = file.id,
                         name = name,
                         path = "/$name",
-                        parentId = folderId
+                        parentId = folderId,
+                        storageType = StorageType.GOOGLE_DRIVE
                     )
                 )
             } else {
@@ -121,23 +123,40 @@ class GoogleDriveStorageAdapter @Inject constructor() : CloudStorageRepository {
         storageType: StorageType,
         authData: String
     ): String? = withContext(Dispatchers.IO) {
+        if (authData.isBlank()) return@withContext null
         try {
             val service = getDriveService(authData)
             val query = "'$folderId' in parents and trashed = false"
             val result = service.files().list()
                 .setQ(query)
-                .setFields("files(id, name)")
+                .setPageSize(1000)
+                .setFields("files(id, name, mimeType)")
                 .execute()
 
-            val coverFile = result.files?.firstOrNull { file ->
+            val files = result.files ?: emptyList()
+
+            // 1. First look for standard cover art file names (case-insensitive)
+            val coverFile = files.firstOrNull { file ->
                 val name = file.name?.lowercase() ?: ""
-                name == "cover.jpg" || name == "cover.png" || name == "folder.jpg" || name == "album.jpg" || name.startsWith("cover")
+                name == "cover.jpg" || name == "cover.jpeg" || name == "cover.png" || name == "cover.webp" ||
+                name == "folder.jpg" || name == "folder.jpeg" || name == "folder.png" || name == "folder.webp" ||
+                name == "album.jpg" || name == "album.jpeg" || name == "album.png" || name == "album.webp" ||
+                name == "front.jpg" || name == "front.jpeg" || name == "front.png" ||
+                name == "art.jpg" || name == "art.png" ||
+                name.startsWith("cover") || name.startsWith("folder") || name.startsWith("album")
+            } ?: files.firstOrNull { file ->
+                // 2. Fallback to any image file in the album folder
+                val name = file.name?.lowercase() ?: ""
+                val mime = file.mimeType?.lowercase() ?: ""
+                mime.startsWith("image/") || name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".webp")
             }
 
             if (coverFile != null) {
-                "https://www.googleapis.com/drive/v3/files/${coverFile.id}?alt=media"
+                val encodedToken = java.net.URLEncoder.encode(authData, "UTF-8")
+                "https://www.googleapis.com/drive/v3/files/${coverFile.id}?alt=media&access_token=$encodedToken"
             } else null
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("GoogleDriveAdapter", "Error fetching album cover url for folder '$folderId': ${e.message}", e)
             null
         }
     }

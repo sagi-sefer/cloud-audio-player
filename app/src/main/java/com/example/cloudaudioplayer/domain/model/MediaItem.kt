@@ -12,7 +12,8 @@ sealed class MediaItem {
         override val name: String,
         override val path: String,
         override val parentId: String? = null,
-        override val coverArtUrl: String? = null
+        override val coverArtUrl: String? = null,
+        val storageType: StorageType = StorageType.GOOGLE_DRIVE
     ) : MediaItem()
 
     data class AudioTrack(
